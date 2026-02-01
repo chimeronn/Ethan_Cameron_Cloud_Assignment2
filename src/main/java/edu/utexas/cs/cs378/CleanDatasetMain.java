@@ -14,7 +14,7 @@ public final class CleanDatasetMain {
         Path inputPath = Paths.get(input);
 
         try {
-            TaxiDataCleaner.CleanResult result = TaxiDataCleaner.cleanFile(inputPath);
+            TaxiDataCleaner.cleanFile(inputPath);
             // result.printErrorSamples(System.out);
             // System.out.println("Valid lines: " + result.getValidItems().size() + " of " + result.getTotalLines()
             //         + ", dropped: " + result.getInvalidLines());

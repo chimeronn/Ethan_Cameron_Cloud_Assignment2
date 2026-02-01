@@ -27,12 +27,12 @@ public final class TaxiDataCleaner {
     private TaxiDataCleaner() {
     }
 
-    public static CleanResult cleanFile(Path inputPath) throws IOException {
+    public static void cleanFile(Path inputPath) throws IOException {
         try (InputStream fileStream = Files.newInputStream(inputPath);
                 InputStream decompressed = wrapIfCompressed(inputPath, fileStream);
                 BufferedReader reader = new BufferedReader(
                         new InputStreamReader(decompressed, StandardCharsets.UTF_8, 64 * 1024))) {
-            return cleanLines(reader);
+            cleanLines(reader);
         }
     }
 
@@ -52,14 +52,14 @@ public final class TaxiDataCleaner {
         System.out.println("Total lines: " + total + ", Invalid lines: " + invalid);
     }
 
-    public static CleanResult cleanFile(Path inputPath, LineConsumer consumer) throws IOException {
-        try (InputStream fileStream = Files.newInputStream(inputPath);
-                InputStream decompressed = wrapIfCompressed(inputPath, fileStream);
-                BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(decompressed, StandardCharsets.UTF_8, 64 * 1024))) {
-            return cleanLines(reader);
-        }
-    }
+    // public static void cleanFile(Path inputPath, LineConsumer consumer) throws IOException {
+    //     try (InputStream fileStream = Files.newInputStream(inputPath);
+    //             InputStream decompressed = wrapIfCompressed(inputPath, fileStream);
+    //             BufferedReader reader = new BufferedReader(
+    //                     new InputStreamReader(decompressed, StandardCharsets.UTF_8, 64 * 1024))) {
+    //         cleanLines(reader);
+    //     }
+    // }
 
     // public static CleanResult cleanLines(BufferedReader reader) throws IOException {
     //     return cleanLines(reader, null);
