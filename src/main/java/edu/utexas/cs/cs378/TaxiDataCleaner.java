@@ -31,7 +31,7 @@ public final class TaxiDataCleaner {
         try (InputStream fileStream = Files.newInputStream(inputPath);
                 InputStream decompressed = wrapIfCompressed(inputPath, fileStream);
                 BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(decompressed, StandardCharsets.UTF_8, 64 * 1024))) {
+                        new InputStreamReader(decompressed, StandardCharsets.UTF_8), 64 * 1024)) {
             cleanLines(reader);
         }
     }
