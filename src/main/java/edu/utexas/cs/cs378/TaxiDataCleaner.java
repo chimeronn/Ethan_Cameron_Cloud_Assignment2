@@ -57,7 +57,7 @@ public final class TaxiDataCleaner {
                 InputStream decompressed = wrapIfCompressed(inputPath, fileStream);
                 BufferedReader reader = new BufferedReader(
                         new InputStreamReader(decompressed, StandardCharsets.UTF_8, 64 * 1024))) {
-            return cleanLines(reader, consumer);
+            return cleanLines(reader);
         }
     }
 
@@ -71,24 +71,24 @@ public final class TaxiDataCleaner {
     //     long total = 0;
     //     long invalid = 0;
 
-        String line;
-        String[] scratch = new String[EXPECTED_COLUMNS];
-        while ((line = reader.readLine()) != null) {
-            total++;
-            ValidatedRide validated = validate(line, scratch);
-            if (validated == null) {
-                invalid++;
-                if (errorSamples.size() < MAX_ERROR_LINES) {
-                    errorSamples.add(line);
-                }
-                continue;
-            }
-            if (consumer != null) {
-                consumer.accept(validated.cleanedLine, validated.totalAmount);
-            } else {
-                validItems.add(validated.toDataItem());
-            }
-        }
+        // String line;
+        // String[] scratch = new String[EXPECTED_COLUMNS];
+        // while ((line = reader.readLine()) != null) {
+        //     total++;
+        //     ValidatedRide validated = validate(line, scratch);
+        //     if (validated == null) {
+        //         invalid++;
+        //         if (errorSamples.size() < MAX_ERROR_LINES) {
+        //             errorSamples.add(line);
+        //         }
+        //         continue;
+        //     }
+        //     if (consumer != null) {
+        //         consumer.accept(validated.cleanedLine, validated.totalAmount);
+        //     } else {
+        //         validItems.add(validated.toDataItem());
+        //     }
+        // }
 
     //     return new CleanResult(validItems, errorSamples, total, invalid);
     // }
