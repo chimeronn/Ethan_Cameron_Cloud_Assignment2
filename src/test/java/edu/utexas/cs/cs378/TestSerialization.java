@@ -28,7 +28,9 @@ public class TestSerialization {
 			DataItem tmp = new DataItem().deserializeFromBytes(bytesOfObject);
 			
 			
-			assertEquals(dataItem.getLine(), tmp.getLine() );			  
+			assertEquals(dataItem.getLine(), tmp.getLine() );
+			assertEquals(dataItem.getValueA(), tmp.getValueA(), 0.0001);
+			assertEquals(dataItem.getValueB(), tmp.getValueB(), 0.0001);
 			
 		}
 		

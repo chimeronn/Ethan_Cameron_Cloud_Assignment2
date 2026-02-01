@@ -1,7 +1,7 @@
 package edu.utexas.cs.cs378;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 /**
  * This class represents a data item with a string and two float values.
@@ -59,12 +59,10 @@ public class DataItem {
 	 */
 	public byte[] handSerializationWithByteBuffer() {
 
-		byte[] lineBytes = line.getBytes(Charset.forName("UTF-8"));
-		// 8 bytes for each float number (two float numbers 16)
-		// 4 byte for an integer to write the length of the string
-		// lineBytes.length for the legth of the string.
+		byte[] lineBytes = line.getBytes(StandardCharsets.UTF_8);
+		int bufferSize = 4 + lineBytes.length + 2 * Float.BYTES;
 
-		ByteBuffer byteBuffer = ByteBuffer.allocate(2 * 8 + 4 + lineBytes.length);
+		ByteBuffer byteBuffer = ByteBuffer.allocate(bufferSize);
 
 		// 1. String line
 		// First length of it and then its bytes
@@ -76,8 +74,8 @@ public class DataItem {
 		// 2. ValueA
 		byteBuffer.putFloat(valueA);
 
-		// 2. ValueA
-		byteBuffer.putFloat(valueA);
+		// 3. ValueB
+		byteBuffer.putFloat(valueB);
 
 		return byteBuffer.array();
 	}
@@ -119,7 +117,7 @@ public class DataItem {
 		byte[] stringBytes = new byte[stringSize];
 		byteBuffer.get(stringBytes, 0, stringSize);
 
-		String mystring = new String(stringBytes, Charset.forName("UTF-8"));
+		String mystring = new String(stringBytes, StandardCharsets.UTF_8);
 		return mystring;
 	}
 

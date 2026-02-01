@@ -2,13 +2,13 @@
 
 ## Team members' names 
 
-1. Student Name:
+1. Student Name: Ethan Yang
 
-   Student UT EID:
+   Student UT EID: ely294
 
-2. Student Name:
+2. Student Name: Cameron Hong
 
-   Student UT EID:
+   Student UT EID: cih487
 
  ...
 

@@ -1,13 +1,15 @@
 package edu.utexas.cs.cs378;
 
-import java.io.BufferedReader;
 import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.PriorityQueue;
 
 public class MainServer {
 
@@ -28,76 +30,54 @@ public class MainServer {
 
 		ServerSocket serverSocket;
 		Socket clientSocket;
-		PrintWriter out = null;
-		BufferedReader in = null;
 
 		try {
 			serverSocket = new ServerSocket(portNumber);
 			System.out.println("Server is running on port number " + portNumber);
-
 			System.out.println("Waiting for client connection ... ");
 
 			clientSocket = serverSocket.accept();
+			System.out.println("Client connected. Receiving driver aggregates ...");
 
 			DataInputStream dis = new DataInputStream(clientSocket.getInputStream());
 
-			// Use the output stream if you need it.
-			DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
-			System.out.println("Server is hearing on port " + portNumber);
-			int hasData; 
-			
-			
-			while(true) {
-				hasData = dis.readInt();
-				
-				System.out.println("Flag is:" + hasData);
-				
-				if(hasData==1) {
-				System.out.println("We have a page of data to process!");
-				
-				// 64 MB page Size
-				byte[] page = new byte[Const.PAGESIZE];
+			int count = dis.readInt();
+			Map<String, DriverStat> merged = new HashMap<>(count);
 
-				// read the main byte array into memory
-				dis.readFully(page);
+			for (int i = 0; i < count; i++) {
+				String driverId = dis.readUTF();
+				double total = dis.readDouble();
+				int medCount = dis.readInt();
+				DriverStat incoming = new DriverStat(driverId, total, medCount);
+				merged.merge(driverId, incoming, DriverStat::merged);
+			}
 
-				//TODO: Remove the Sleep when you run your program. This is just for demo. 
-				Thread.sleep(500);
-				
-				List<DataItem> dataItems = Utils.readFromAPage(page) ;
-				
-				//TODO process the data here !
-//				for (DataItem dataItem : dataItems) {
-//					// We just print it to the stdout
-//					// You need to receive the data here and process it. 
-//						System.out.println(dataItem);
-//				}
-				
-				
-				System.out.println("Number of Objects received:" + dataItems.size());
-				
-				
-				// This tells the client to send more data. 
-				// Give me more data if you have
-				dos.writeInt(1);
-				dos.flush();
-				
-				}else {
-					System.out.println("Terminate beecause Flag is: " + hasData);
-					break; // break out of while true if we get no more data. 					
-				}
-				
-				
-			}// End of while true
+			List<DriverStat> top10 = topNByEarnings(merged, 10);
+			System.out.println("Top drivers (driverId, distinct taxis, total earnings):");
+			for (DriverStat stat : top10) {
+				System.out.println(stat);
+			}
 
+			clientSocket.close();
+			serverSocket.close();
 
-
-
-
-		} catch (IOException | InterruptedException e) {
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 
+	}
+
+	private static List<DriverStat> topNByEarnings(Map<String, DriverStat> stats, int n) {
+		PriorityQueue<DriverStat> pq = new PriorityQueue<>(Comparator.comparingDouble(DriverStat::getTotalEarnings));
+		for (DriverStat stat : stats.values()) {
+			pq.offer(stat);
+			if (pq.size() > n) {
+				pq.poll();
+			}
+		}
+		List<DriverStat> result = new ArrayList<>(pq);
+		result.sort(Comparator.comparingDouble(DriverStat::getTotalEarnings).reversed());
+		return result;
 	}
 
 	
