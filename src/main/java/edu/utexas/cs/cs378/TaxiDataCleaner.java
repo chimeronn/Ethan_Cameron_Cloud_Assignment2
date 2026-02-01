@@ -101,7 +101,7 @@ public final class TaxiDataCleaner {
         return baseStream;
     }
 
-    private static boolean validate(Stirng line) {
+    private static boolean validate(String line) {
         if(line == null || line.isEmpty()) {
             return false;
         }
