@@ -57,9 +57,11 @@ public final class TaxiDataCleaner {
 
         String line;
         String[] scratch = new String[EXPECTED_COLUMNS];
+        boolean buildLine = consumer == null;
+
         while ((line = reader.readLine()) != null) {
             total++;
-            ValidatedRide validated = validate(line, scratch);
+            ValidatedRide validated = validate(line, scratch, buildLine);
             if (validated == null) {
                 invalid++;
                 if (errorSamples.size() < MAX_ERROR_LINES) {
@@ -68,7 +70,7 @@ public final class TaxiDataCleaner {
                 continue;
             }
             if (consumer != null) {
-                consumer.accept(validated.cleanedLine, validated.totalAmount);
+                consumer.accept(validated.medallion, validated.driverId, validated.totalAmount);
             } else {
                 validItems.add(validated.toDataItem());
             }
@@ -85,7 +87,7 @@ public final class TaxiDataCleaner {
         return baseStream;
     }
 
-    private static ValidatedRide validate(String line, String[] buffer) {
+    private static ValidatedRide validate(String line, String[] buffer, boolean buildLine) {
         if (line == null || line.isEmpty()) {
             return null;
         }
@@ -121,8 +123,8 @@ public final class TaxiDataCleaner {
             return null;
         }
 
-        String cleanedLine = String.join(",", trimmed);
-        return new ValidatedRide(cleanedLine, totalAmount.floatValue());
+        String cleanedLine = buildLine ? String.join(",", trimmed) : null;
+        return new ValidatedRide(cleanedLine, trimmed[0], trimmed[1], totalAmount.floatValue());
     }
 
     // Fast split without regex; expects exactly 16 commas / 17 columns.
@@ -140,7 +142,6 @@ public final class TaxiDataCleaner {
                 start = i + 1;
             }
         }
-        // last column
         out[col++] = line.substring(start);
         if (col != EXPECTED_COLUMNS) {
             return null;
@@ -203,20 +204,25 @@ public final class TaxiDataCleaner {
 
     private static final class ValidatedRide {
         private final String cleanedLine;
+        private final String medallion;
+        private final String driverId;
         private final float totalAmount;
 
-        ValidatedRide(String cleanedLine, float totalAmount) {
+        ValidatedRide(String cleanedLine, String medallion, String driverId, float totalAmount) {
             this.cleanedLine = cleanedLine;
+            this.medallion = medallion;
+            this.driverId = driverId;
             this.totalAmount = totalAmount;
         }
 
         DataItem toDataItem() {
-            return new DataItem(cleanedLine, totalAmount, 0.0f);
+            String lineOut = cleanedLine != null ? cleanedLine : medallion + "," + driverId;
+            return new DataItem(lineOut, totalAmount, 0.0f);
         }
     }
 
     @FunctionalInterface
     public interface LineConsumer {
-        void accept(String cleanedLine, float totalAmount);
+        void accept(String medallion, String driverId, float totalAmount);
     }
 }
