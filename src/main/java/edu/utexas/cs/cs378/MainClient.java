@@ -53,10 +53,7 @@ public class MainClient {
 				try {
 					Path inputPath = Paths.get(datasetPath);
 					TaxiDataCleaner.CleanResult cleanResult = TaxiDataCleaner.cleanFile(inputPath,
-							(cleanedLine, totalAmount) -> {
-							String[] parts = cleanedLine.split(",", 3);
-							String medallion = parts[0];
-							String driverId = parts[1];
+							(medallion, driverId, totalAmount) -> {
 							DriverAccumulator acc = aggregates.computeIfAbsent(driverId, k -> new DriverAccumulator());
 							acc.totalEarnings += totalAmount;
 							acc.medallions.add(medallion);
