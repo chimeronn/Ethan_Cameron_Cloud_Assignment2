@@ -32,12 +32,25 @@ public final class TaxiDataCleaner {
                 InputStream decompressed = wrapIfCompressed(inputPath, fileStream);
                 BufferedReader reader = new BufferedReader(
                         new InputStreamReader(decompressed, StandardCharsets.UTF_8, 64 * 1024))) {
-            return cleanLines(reader);
+            return cleanLines(reader, null);
+        }
+    }
+
+    public static CleanResult cleanFile(Path inputPath, LineConsumer consumer) throws IOException {
+        try (InputStream fileStream = Files.newInputStream(inputPath);
+                InputStream decompressed = wrapIfCompressed(inputPath, fileStream);
+                BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(decompressed, StandardCharsets.UTF_8, 64 * 1024))) {
+            return cleanLines(reader, consumer);
         }
     }
 
     public static CleanResult cleanLines(BufferedReader reader) throws IOException {
-        List<DataItem> validItems = new ArrayList<>();
+        return cleanLines(reader, null);
+    }
+
+    private static CleanResult cleanLines(BufferedReader reader, LineConsumer consumer) throws IOException {
+        List<DataItem> validItems = consumer == null ? new ArrayList<>() : Collections.emptyList();
         List<String> errorSamples = new ArrayList<>();
         long total = 0;
         long invalid = 0;
@@ -54,7 +67,11 @@ public final class TaxiDataCleaner {
                 }
                 continue;
             }
-            validItems.add(validated.toDataItem());
+            if (consumer != null) {
+                consumer.accept(validated.cleanedLine, validated.totalAmount);
+            } else {
+                validItems.add(validated.toDataItem());
+            }
         }
 
         return new CleanResult(validItems, errorSamples, total, invalid);
@@ -196,5 +213,10 @@ public final class TaxiDataCleaner {
         DataItem toDataItem() {
             return new DataItem(cleanedLine, totalAmount, 0.0f);
         }
+    }
+
+    @FunctionalInterface
+    public interface LineConsumer {
+        void accept(String cleanedLine, float totalAmount);
     }
 }

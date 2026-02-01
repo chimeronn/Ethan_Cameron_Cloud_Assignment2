@@ -45,39 +45,50 @@ public class MainClient {
 				System.out.println("Using generated demo data (" + batchSize + " items)");
 			}
 
-			List<DataItem> dataItems;
+			Map<String, DriverAccumulator> aggregates = new HashMap<>();
+			long[] validCount = new long[1];
+			long[] invalidCount = new long[1];
+
 			if (datasetPath != null) {
 				try {
 					Path inputPath = Paths.get(datasetPath);
-					TaxiDataCleaner.CleanResult cleanResult = TaxiDataCleaner.cleanFile(inputPath);
+					TaxiDataCleaner.CleanResult cleanResult = TaxiDataCleaner.cleanFile(inputPath,
+							(cleanedLine, totalAmount) -> {
+							String[] parts = cleanedLine.split(",", 3);
+							String medallion = parts[0];
+							String driverId = parts[1];
+							DriverAccumulator acc = aggregates.computeIfAbsent(driverId, k -> new DriverAccumulator());
+							acc.totalEarnings += totalAmount;
+							acc.medallions.add(medallion);
+							validCount[0]++;
+						});
+					invalidCount[0] = cleanResult.getInvalidLines();
 					cleanResult.printErrorSamples(System.out);
-					System.out.println("Valid lines: " + cleanResult.getValidItems().size() + " of "
+					System.out.println("Valid lines: " + validCount[0] + " of "
 							+ cleanResult.getTotalLines() + ", dropped: " + cleanResult.getInvalidLines());
-					if (cleanResult.getValidItems().isEmpty()) {
+					if (validCount[0] == 0) {
 						System.out.println("No valid data to send after cleaning.");
 						return;
 					}
-					dataItems = cleanResult.getValidItems();
 				} catch (IOException e) {
 					System.err.println("Failed to clean dataset: " + e.getMessage());
 					return;
 				}
 			} else {
-				dataItems = Utils.generateExampleData(batchSize);
-			}
-
-			Map<String, DriverAccumulator> aggregates = new HashMap<>();
-			for (DataItem item : dataItems) {
-				String[] parts = item.getLine().split(",", -1);
-				if (parts.length < 2) {
-					continue;
+				List<DataItem> dataItems = Utils.generateExampleData(batchSize);
+				for (DataItem item : dataItems) {
+					String[] parts = item.getLine().split(",", 3);
+					if (parts.length < 2) {
+						continue;
+					}
+					String medallion = parts[0];
+					String driverId = parts[1];
+					double total = item.getValueA();
+					DriverAccumulator acc = aggregates.computeIfAbsent(driverId, k -> new DriverAccumulator());
+					acc.totalEarnings += total;
+					acc.medallions.add(medallion);
+					validCount[0]++;
 				}
-				String medallion = parts[0];
-				String driverId = parts[1];
-				double total = item.getValueA();
-				DriverAccumulator acc = aggregates.computeIfAbsent(driverId, k -> new DriverAccumulator());
-				acc.totalEarnings += total;
-				acc.medallions.add(medallion);
 			}
 
 			DriverStat[] stats = new DriverStat[aggregates.size()];
