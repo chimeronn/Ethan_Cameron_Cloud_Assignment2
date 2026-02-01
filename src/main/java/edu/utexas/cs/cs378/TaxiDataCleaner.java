@@ -32,8 +32,24 @@ public final class TaxiDataCleaner {
                 InputStream decompressed = wrapIfCompressed(inputPath, fileStream);
                 BufferedReader reader = new BufferedReader(
                         new InputStreamReader(decompressed, StandardCharsets.UTF_8, 64 * 1024))) {
-            return cleanLines(reader, null);
+            return cleanLines(reader);
         }
+    }
+
+    private static void cleanLines(BufferedReader reader) throws IOException {
+        long total = 0;
+        long invalid = 0;
+
+        String line;
+        while((line = reader.readLine()) != null) {
+            total++;
+            ValidatedRide validated = validate(line, null);
+            if (validated == null) {
+                invalid++;
+                System.out.println("Invalid line: " + line);
+            }
+        }
+        System.out.println("Total lines: " + total + ", Invalid lines: " + invalid);
     }
 
     public static CleanResult cleanFile(Path inputPath, LineConsumer consumer) throws IOException {
@@ -45,37 +61,37 @@ public final class TaxiDataCleaner {
         }
     }
 
-    public static CleanResult cleanLines(BufferedReader reader) throws IOException {
-        return cleanLines(reader, null);
-    }
+    // public static CleanResult cleanLines(BufferedReader reader) throws IOException {
+    //     return cleanLines(reader, null);
+    // }
 
-    private static CleanResult cleanLines(BufferedReader reader, LineConsumer consumer) throws IOException {
-        List<DataItem> validItems = consumer == null ? new ArrayList<>() : Collections.emptyList();
-        List<String> errorSamples = new ArrayList<>();
-        long total = 0;
-        long invalid = 0;
+    // private static CleanResult cleanLines(BufferedReader reader, LineConsumer consumer) throws IOException {
+    //     List<DataItem> validItems = consumer == null ? new ArrayList<>() : Collections.emptyList();
+    //     List<String> errorSamples = new ArrayList<>();
+    //     long total = 0;
+    //     long invalid = 0;
 
-        String line;
-        String[] scratch = new String[EXPECTED_COLUMNS];
-        while ((line = reader.readLine()) != null) {
-            total++;
-            ValidatedRide validated = validate(line, scratch);
-            if (validated == null) {
-                invalid++;
-                if (errorSamples.size() < MAX_ERROR_LINES) {
-                    errorSamples.add(line);
-                }
-                continue;
-            }
-            if (consumer != null) {
-                consumer.accept(validated.cleanedLine, validated.totalAmount);
-            } else {
-                validItems.add(validated.toDataItem());
-            }
-        }
+    //     String line;
+    //     String[] scratch = new String[EXPECTED_COLUMNS];
+    //     while ((line = reader.readLine()) != null) {
+    //         total++;
+    //         ValidatedRide validated = validate(line, scratch);
+    //         if (validated == null) {
+    //             invalid++;
+    //             if (errorSamples.size() < MAX_ERROR_LINES) {
+    //                 errorSamples.add(line);
+    //             }
+    //             continue;
+    //         }
+    //         if (consumer != null) {
+    //             consumer.accept(validated.cleanedLine, validated.totalAmount);
+    //         } else {
+    //             validItems.add(validated.toDataItem());
+    //         }
+    //     }
 
-        return new CleanResult(validItems, errorSamples, total, invalid);
-    }
+    //     return new CleanResult(validItems, errorSamples, total, invalid);
+    // }
 
     private static InputStream wrapIfCompressed(Path path, InputStream baseStream) throws IOException {
         String name = path.getFileName().toString().toLowerCase(LOCALE);
