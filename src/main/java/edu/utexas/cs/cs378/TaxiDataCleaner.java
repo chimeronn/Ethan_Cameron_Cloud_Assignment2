@@ -68,6 +68,10 @@ public final class TaxiDataCleaner {
         String line;
         String[] scratch = new String[EXPECTED_COLUMNS];
         boolean buildLine = rowConsumer != null || consumer == null;
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5335bc4 (new code)
         while ((line = reader.readLine()) != null) {
             total++;
             ValidatedRide validated = validate(line, scratch, buildLine);
@@ -79,7 +83,12 @@ public final class TaxiDataCleaner {
                 continue;
             }
             if (rowConsumer != null && validated.cleanedLine != null) {
+<<<<<<< HEAD
                 rowConsumer.accept(validated.cleanedLine, validated.medallion, validated.driverId, validated.totalAmount);
+=======
+                rowConsumer.accept(validated.cleanedLine, validated.medallion, validated.driverId,
+                        validated.totalAmount);
+>>>>>>> 5335bc4 (new code)
             } else if (consumer != null) {
                 consumer.accept(validated.medallion, validated.driverId, validated.totalAmount);
             } else {
