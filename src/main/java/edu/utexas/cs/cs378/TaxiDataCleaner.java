@@ -43,8 +43,8 @@ public final class TaxiDataCleaner {
         String line;
         while((line = reader.readLine()) != null) {
             total++;
-            ValidatedRide validated = validate(line, null);
-            if (validated == null) {
+            boolean validated = validate(line);
+            if (!validated) {
                 invalid++;
                 System.out.println("Invalid line: " + line);
             }
@@ -99,6 +99,42 @@ public final class TaxiDataCleaner {
             return new BZip2CompressorInputStream(baseStream);
         }
         return baseStream;
+    }
+
+    private static boolean validate(Stirng line) {
+        if(line == null || line.isEmpty()) {
+            return false;
+        }
+
+        String[] parts = split17(line, null);
+        if(parts == null) {
+            return false;
+        }
+
+        String[] trimmed = new String[EXPECTED_COLUMNS];
+        for (int i = 0; i < parts.length; i++) {
+            trimmed[i] = parts[i].trim();
+        }
+
+        Double fareAmount = parseDouble(trimmed[11]);
+        Double surcharge = parseDouble(trimmed[12]);
+        Double mtaTax = parseDouble(trimmed[13]);
+        Double tipAmount = parseDouble(trimmed[14]);
+        Double tollsAmount = parseDouble(trimmed[15]);
+        Double totalAmount = parseDouble(trimmed[16]);
+        if (fareAmount == null || surcharge == null || mtaTax == null || tipAmount == null
+                || tollsAmount == null || totalAmount == null) {
+            return false;
+        }
+
+        double computedTotal = fareAmount + surcharge + mtaTax + tipAmount + tollsAmount;
+        if (Math.abs(totalAmount - computedTotal) > TOTAL_TOLERANCE) {
+            return false;
+        }
+        if (totalAmount > TOTAL_LIMIT) {
+            return false;
+        }
+        return true;
     }
 
     private static ValidatedRide validate(String line, String[] buffer, boolean buildLine) {
