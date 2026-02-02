@@ -1,86 +1,73 @@
 package edu.utexas.cs.cs378;
 
-import java.io.DataInputStream;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class MainServer {
+	private static void addToTop10(PriorityQueue<DriverStat> top10Drivers,
+			DriverStat candidate) {
+		if (top10Drivers.size() < 10) {
+			top10Drivers.offer(candidate);
+		} else if (candidate.getTotalEarnings() > top10Drivers.peek().getTotalEarnings()) {
+			top10Drivers.poll();
+			top10Drivers.offer(candidate);
+		}
+	}
 
-	static public int portNumber = 33333;
-
-	/**
-	 * A main method to run examples.
-	 *
-	 * @param args not used
-	 */
 	public static void main(String[] args) {
+		int port = 33333;
+		System.out.println("Starting server on port " + port);
 
+		PriorityQueue<DriverStat> top10Drivers = new PriorityQueue<>(10,
+				Comparator.comparingDouble(e -> e.getTotalEarnings()));
 
-		if (args.length > 0) {
-			System.err.println("Usage: MainServer <port number>");
-			portNumber = Integer.parseInt(args[0]);
-		}
+		try (ServerSocket serverSocket = new ServerSocket(port);
+			Socket clientSocket = serverSocket.accept();
+			BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
+			System.out.println("Client connected!");
 
-		ServerSocket serverSocket;
-		Socket clientSocket;
+			Map<String, DriverStat> driverMap = new HashMap<>();
 
-		try {
-			serverSocket = new ServerSocket(portNumber);
-			System.out.println("Server is running on port number " + portNumber);
-			System.out.println("Waiting for client connection ... ");
+			String line;
+			long count = 0;
 
-			clientSocket = serverSocket.accept();
-			System.out.println("Client connected. Receiving driver aggregates ...");
+			while((line = in.readLine()) != null) {
+				String[] parts = line.split(",");
+				if(parts.length != 3) {
+					System.err.println("Invalid line: " + line);
+					continue;
+				}
 
-			DataInputStream dis = new DataInputStream(clientSocket.getInputStream());
+				String driverId = parts[0];
+				String medallion = parts[1];
+				double totalAmount = Double.parseDouble(parts[2]);
 
-			int count = dis.readInt();
-			Map<String, DriverStat> merged = new HashMap<>(count);
+				driverMap.putIfAbsent(driverId, new DriverStat(driverId));
+				DriverStat stat = driverMap.get(driverId);
+				stat.increaseEarnings(totalAmount);
+				stat.addMedallion(medallion);
 
-			for (int i = 0; i < count; i++) {
-				String driverId = dis.readUTF();
-				double total = dis.readDouble();
-				int medCount = dis.readInt();
-				DriverStat incoming = new DriverStat(driverId, total, medCount);
-				merged.merge(driverId, incoming, DriverStat::merged);
+				addToTop10(top10Drivers, stat);
+
+				count++;
+				if(count % 1000 == 0) {
+					System.out.println("Processed " + count + " lines.");
+				}
 			}
-
-			List<DriverStat> top10 = topNByEarnings(merged, 10);
-			System.out.println("Top drivers (driverId, distinct taxis, total earnings):");
-			for (DriverStat stat : top10) {
-				System.out.println(stat);
+			System.out.println("Done receiving data. Calculating top 10 drivers...");
+			List<DriverStat> topDriversList = new ArrayList<>(top10Drivers);
+			topDriversList.sort(Comparator.comparingDouble(DriverStat::getTotalEarnings).reversed());
+			System.out.println("Top 10 Drivers:");
+			for(DriverStat ds : topDriversList) {
+				System.out.println(ds);
 			}
-
-			clientSocket.close();
-			serverSocket.close();
-
 		} catch (IOException e) {
-			e.printStackTrace();
+			System.err.println("Error starting server: " + e.getMessage());
 		}
-
 	}
-
-	private static List<DriverStat> topNByEarnings(Map<String, DriverStat> stats, int n) {
-		PriorityQueue<DriverStat> pq = new PriorityQueue<>(Comparator.comparingDouble(DriverStat::getTotalEarnings));
-		for (DriverStat stat : stats.values()) {
-			pq.offer(stat);
-			if (pq.size() > n) {
-				pq.poll();
-			}
-		}
-		List<DriverStat> result = new ArrayList<>(pq);
-		result.sort(Comparator.comparingDouble(DriverStat::getTotalEarnings).reversed());
-		return result;
-	}
-
-	
-	
-
 }

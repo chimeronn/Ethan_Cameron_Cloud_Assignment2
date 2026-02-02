@@ -3,13 +3,20 @@ package edu.utexas.cs.cs378;
 public class DriverStat {
 
     private final String driverId;
-    private final double totalEarnings;
-    private final int distinctMedallions;
+    private double totalEarnings;
+    private Set<String> medallions;
 
-    public DriverStat(String driverId, double totalEarnings, int distinctMedallions) {
+    public DriverStat(String driverId){
+        this.driverId = driverId;
+        this.totalEarnings = 0.0;
+        this.medallions = new HashSet<>();
+    }
+
+    public DriverStat(String driverId, double totalEarnings, String medallion) {
         this.driverId = driverId;
         this.totalEarnings = totalEarnings;
-        this.distinctMedallions = distinctMedallions;
+        this.medallions = new HashSet<>();
+        this.medallions.add(medallion);
     }
 
     public String getDriverId() {
@@ -21,7 +28,15 @@ public class DriverStat {
     }
 
     public int getDistinctMedallions() {
-        return distinctMedallions;
+        return medallions.size();
+    }
+
+    public void increaseEarnings(double amount) {
+        totalEarnings += amount;
+    }
+
+    public void addMedallion(String medallion) {
+        medallions.add(medallion);
     }
 
     public DriverStat merged(DriverStat other) {
@@ -30,11 +45,11 @@ public class DriverStat {
         }
         // This assumes medallion sets are disjoint per sender; if they overlap, counts will be over.
         return new DriverStat(driverId, totalEarnings + other.totalEarnings,
-                distinctMedallions + other.distinctMedallions);
+                new HashSet<>(medallions).stream().filter(other.medallions::contains).collect(Collectors.toSet()));
     }
 
     @Override
     public String toString() {
-        return "(" + driverId + ", " + distinctMedallions + ", " + totalEarnings + ")";
+        return "(DriverId: " + driverId + ", Unique Medallions: " + medallions.size() + ", Total Earnings: " + totalEarnings + ")";
     }
 }

@@ -27,68 +27,108 @@ public final class TaxiDataCleaner {
     private TaxiDataCleaner() {
     }
 
-    public static CleanResult cleanFile(Path inputPath) throws IOException {
+    public static void cleanFile(Path inputPath) throws IOException {
         try (InputStream fileStream = Files.newInputStream(inputPath);
                 InputStream decompressed = wrapIfCompressed(inputPath, fileStream);
                 BufferedReader reader = new BufferedReader(
                         new InputStreamReader(decompressed, StandardCharsets.UTF_8), 64 * 1024)) {
-            return cleanLines(reader, null, null);
+            cleanLines(reader);
         }
     }
 
-    public static CleanResult cleanFile(Path inputPath, LineConsumer consumer) throws IOException {
+    public static void cleanFile(Path inputPath, PrintWriter socketOut) throws IOException {
         try (InputStream fileStream = Files.newInputStream(inputPath);
                 InputStream decompressed = wrapIfCompressed(inputPath, fileStream);
                 BufferedReader reader = new BufferedReader(
                         new InputStreamReader(decompressed, StandardCharsets.UTF_8), 64 * 1024)) {
-            return cleanLines(reader, consumer, null);
+            cleanLines(reader, socketOut);
         }
     }
 
-    public static CleanResult cleanFile(Path inputPath, RowConsumer rowConsumer) throws IOException {
-        try (InputStream fileStream = Files.newInputStream(inputPath);
-                InputStream decompressed = wrapIfCompressed(inputPath, fileStream);
-                BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(decompressed, StandardCharsets.UTF_8), 64 * 1024)) {
-            return cleanLines(reader, null, rowConsumer);
-        }
-    }
-
-    public static CleanResult cleanLines(BufferedReader reader) throws IOException {
-        return cleanLines(reader, null, null);
-    }
-
-    private static CleanResult cleanLines(BufferedReader reader, LineConsumer consumer, RowConsumer rowConsumer)
-            throws IOException {
-        List<DataItem> validItems = (consumer == null && rowConsumer == null) ? new ArrayList<>() : Collections.emptyList();
-        List<String> errorSamples = new ArrayList<>();
+    private static void cleanLines(BufferedReader reader) throws IOException {
         long total = 0;
         long invalid = 0;
 
         String line;
-        String[] scratch = new String[EXPECTED_COLUMNS];
-        boolean buildLine = rowConsumer != null || consumer == null;
-        while ((line = reader.readLine()) != null) {
+        while((line = reader.readLine()) != null) {
             total++;
-            ValidatedRide validated = validate(line, scratch, buildLine);
-            if (validated == null) {
+            boolean validated = validate(line);
+            if (!validated) {
                 invalid++;
-                if (errorSamples.size() < MAX_ERROR_LINES) {
-                    errorSamples.add(line);
-                }
-                continue;
-            }
-            if (rowConsumer != null && validated.cleanedLine != null) {
-                rowConsumer.accept(validated.cleanedLine, validated.medallion, validated.driverId, validated.totalAmount);
-            } else if (consumer != null) {
-                consumer.accept(validated.medallion, validated.driverId, validated.totalAmount);
-            } else {
-                validItems.add(validated.toDataItem());
+                System.out.println("Invalid line: " + line);
             }
         }
-
-        return new CleanResult(validItems, errorSamples, total, invalid);
+        System.out.println("Total lines: " + total + ", Invalid lines: " + invalid);
     }
+
+    private static void cleanLines(BufferedReader reader, PrintWriter socketOut) throws IOException {
+        long total = 0;
+        long invalid = 0;
+
+        String line;
+        while((line = reader.readLine()) != null) {
+            total++;
+            boolean validated = validate(line);
+            if (!validated) {
+                invalid++;
+                System.out.println("Invalid line: " + line);
+            } else {
+                String[] scratch = split17(line, null);
+
+                if(scratch == null) {
+                    continue;
+                }
+                
+                String medallion = scratch[0];
+                String driverId = scratch[1];
+                String totalAmount = scratch[16];
+
+                socketOut.println(driverId + "," + medallion + "," + totalAmount);
+            }
+        }
+        System.out.println("Total lines: " + total + ", Invalid lines: " + invalid);
+    }
+
+    // public static void cleanFile(Path inputPath, LineConsumer consumer) throws IOException {
+    //     try (InputStream fileStream = Files.newInputStream(inputPath);
+    //             InputStream decompressed = wrapIfCompressed(inputPath, fileStream);
+    //             BufferedReader reader = new BufferedReader(
+    //                     new InputStreamReader(decompressed, StandardCharsets.UTF_8, 64 * 1024))) {
+    //         cleanLines(reader);
+    //     }
+    // }
+
+    // public static CleanResult cleanLines(BufferedReader reader) throws IOException {
+    //     return cleanLines(reader, null);
+    // }
+
+    // private static CleanResult cleanLines(BufferedReader reader, LineConsumer consumer) throws IOException {
+    //     List<DataItem> validItems = consumer == null ? new ArrayList<>() : Collections.emptyList();
+    //     List<String> errorSamples = new ArrayList<>();
+    //     long total = 0;
+    //     long invalid = 0;
+
+        // String line;
+        // String[] scratch = new String[EXPECTED_COLUMNS];
+        // while ((line = reader.readLine()) != null) {
+        //     total++;
+        //     ValidatedRide validated = validate(line, scratch);
+        //     if (validated == null) {
+        //         invalid++;
+        //         if (errorSamples.size() < MAX_ERROR_LINES) {
+        //             errorSamples.add(line);
+        //         }
+        //         continue;
+        //     }
+        //     if (consumer != null) {
+        //         consumer.accept(validated.cleanedLine, validated.totalAmount);
+        //     } else {
+        //         validItems.add(validated.toDataItem());
+        //     }
+        // }
+
+    //     return new CleanResult(validItems, errorSamples, total, invalid);
+    // }
 
     private static InputStream wrapIfCompressed(Path path, InputStream baseStream) throws IOException {
         String name = path.getFileName().toString().toLowerCase(LOCALE);
@@ -96,6 +136,42 @@ public final class TaxiDataCleaner {
             return new BZip2CompressorInputStream(baseStream);
         }
         return baseStream;
+    }
+
+    private static boolean validate(String line) {
+        if(line == null || line.isEmpty()) {
+            return false;
+        }
+
+        String[] parts = split17(line, null);
+        if(parts == null) {
+            return false;
+        }
+
+        String[] trimmed = new String[EXPECTED_COLUMNS];
+        for (int i = 0; i < parts.length; i++) {
+            trimmed[i] = parts[i].trim();
+        }
+
+        Double fareAmount = parseDouble(trimmed[11]);
+        Double surcharge = parseDouble(trimmed[12]);
+        Double mtaTax = parseDouble(trimmed[13]);
+        Double tipAmount = parseDouble(trimmed[14]);
+        Double tollsAmount = parseDouble(trimmed[15]);
+        Double totalAmount = parseDouble(trimmed[16]);
+        if (fareAmount == null || surcharge == null || mtaTax == null || tipAmount == null
+                || tollsAmount == null || totalAmount == null) {
+            return false;
+        }
+
+        double computedTotal = fareAmount + surcharge + mtaTax + tipAmount + tollsAmount;
+        if (Math.abs(totalAmount - computedTotal) > TOTAL_TOLERANCE) {
+            return false;
+        }
+        if (totalAmount > TOTAL_LIMIT) {
+            return false;
+        }
+        return true;
     }
 
     private static ValidatedRide validate(String line, String[] buffer, boolean buildLine) {
@@ -235,10 +311,5 @@ public final class TaxiDataCleaner {
     @FunctionalInterface
     public interface LineConsumer {
         void accept(String medallion, String driverId, float totalAmount);
-    }
-
-    @FunctionalInterface
-    public interface RowConsumer {
-        void accept(String cleanedLine, String medallion, String driverId, float totalAmount);
     }
 }
