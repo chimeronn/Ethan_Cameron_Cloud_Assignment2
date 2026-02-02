@@ -1,6 +1,8 @@
 package edu.utexas.cs.cs378;
 
 import java.io.PrintWriter;
+import java.io.BufferedWriter;
+import java.io.OutputStreamWriter;
 import java.net.Socket;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -15,7 +17,7 @@ public class MainClient {
 		int port = 33333;
 
 		try (Socket socket = new Socket(serverAddress, port);
-			PrintWriter out = new PrintWriter(socket.getOutputStream(), true)) {
+			PrintWriter out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(socket.getOutputStream())), false)) {
 			System.out.println("Connected to server at " + serverAddress + ":" + port);
 
 			TaxiDataCleaner.cleanFile(inputPath, out);
