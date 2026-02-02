@@ -55,7 +55,7 @@ public class MainServer {
 				addToTop10(top10Drivers, stat);
 
 				count++;
-				if(count % 1000 == 0) {
+				if(count % 100000 == 0) {
 					System.out.println("Processed " + count + " lines.");
 				}
 			}
