@@ -9,31 +9,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class MainServer {
-	private static void addToTop10(PriorityQueue<DriverStat> top10Drivers, Set<DriverStat> top10DriverSet,
-			DriverStat candidate) {
-		if (top10DriverSet.contains(candidate)) {
-			return;
-		}
-		
-		if (top10Drivers.size() < 10) {
-			top10Drivers.offer(candidate);
-			top10DriverSet.add(candidate);
-		} else if (candidate.getTotalEarnings() > top10Drivers.peek().getTotalEarnings()) {
-			top10DriverSet.remove(top10Drivers.poll());
-			top10DriverSet.add(candidate);
-			top10Drivers.offer(candidate);
-		}
-	}
-
 	public static void main(String[] args) {
 		int port = 33333;
 		System.out.println("Starting server on port " + port);
-
-		PriorityQueue<DriverStat> top10Drivers = new PriorityQueue<>(10,
-				Comparator.comparingDouble(e -> e.getTotalEarnings()));
-		
-		Set<DriverStat> top10DriverSet = new HashSet<>();
-
+	
 		try (ServerSocket serverSocket = new ServerSocket(port);
 			Socket clientSocket = serverSocket.accept();
 			BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))) {
@@ -60,19 +39,17 @@ public class MainServer {
 				stat.increaseEarnings(totalAmount);
 				stat.addMedallion(medallion);
 
-				addToTop10(top10Drivers, top10DriverSet, stat);
-
 				count++;
 				if(count % 100000 == 0) {
 					System.out.println("Processed " + count + " lines.");
 				}
 			}
 			System.out.println("Done receiving data. Calculating top 10 drivers...");
-			List<DriverStat> topDriversList = new ArrayList<>(top10Drivers);
-			topDriversList.sort(Comparator.comparingDouble(DriverStat::getTotalEarnings).reversed());
+			List<Map.Entry<String, DriverStat>> topDrivers = new ArrayList<>(driverMap.entrySet());
+			topDrivers.sort((e1, e2) -> Double.compare(e2.getValue().getTotalEarnings(), e1.getValue().getTotalEarnings()));
 			System.out.println("Top 10 Drivers:");
-			for(DriverStat ds : topDriversList) {
-				System.out.println(ds);
+			for(int i = 0; i < Math.min(10, topDrivers.size()); i++) {
+				System.out.println(topDrivers.get(i).getValue());
 			}
 		} catch (IOException e) {
 			System.err.println("Error starting server: " + e.getMessage());
