@@ -9,12 +9,18 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class MainServer {
-	private static void addToTop10(PriorityQueue<DriverStat> top10Drivers,
+	private static void addToTop10(PriorityQueue<DriverStat> top10Drivers, Set<DriverStat> top10DriverSet,
 			DriverStat candidate) {
+		if (top10DriverSet.contains(candidate)) {
+			return;
+		}
+		
 		if (top10Drivers.size() < 10) {
 			top10Drivers.offer(candidate);
+			top10DriverSet.add(candidate);
 		} else if (candidate.getTotalEarnings() > top10Drivers.peek().getTotalEarnings()) {
-			top10Drivers.poll();
+			top10DriverSet.remove(top10Drivers.poll());
+			top10DriverSet.add(candidate);
 			top10Drivers.offer(candidate);
 		}
 	}
@@ -25,6 +31,8 @@ public class MainServer {
 
 		PriorityQueue<DriverStat> top10Drivers = new PriorityQueue<>(10,
 				Comparator.comparingDouble(e -> e.getTotalEarnings()));
+		
+		Set<DriverStat> top10DriverSet = new HashSet<>();
 
 		try (ServerSocket serverSocket = new ServerSocket(port);
 			Socket clientSocket = serverSocket.accept();
@@ -52,7 +60,7 @@ public class MainServer {
 				stat.increaseEarnings(totalAmount);
 				stat.addMedallion(medallion);
 
-				addToTop10(top10Drivers, stat);
+				addToTop10(top10Drivers, top10DriverSet, stat);
 
 				count++;
 				if(count % 100000 == 0) {
