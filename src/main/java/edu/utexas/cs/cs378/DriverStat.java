@@ -1,5 +1,8 @@
 package edu.utexas.cs.cs378;
 
+import java.util.Set;
+import java.util.HashSet;
+
 public class DriverStat {
 
     private final String driverId;
@@ -39,14 +42,14 @@ public class DriverStat {
         medallions.add(medallion);
     }
 
-    public DriverStat merged(DriverStat other) {
-        if (!driverId.equals(other.driverId)) {
-            throw new IllegalArgumentException("Cannot merge stats for different drivers");
-        }
-        // This assumes medallion sets are disjoint per sender; if they overlap, counts will be over.
-        return new DriverStat(driverId, totalEarnings + other.totalEarnings,
-                new HashSet<>(medallions).stream().filter(other.medallions::contains).collect(Collectors.toSet()));
-    }
+    // public DriverStat merged(DriverStat other) {
+    //     if (!driverId.equals(other.driverId)) {
+    //         throw new IllegalArgumentException("Cannot merge stats for different drivers");
+    //     }
+    //     // This assumes medallion sets are disjoint per sender; if they overlap, counts will be over.
+    //     return new DriverStat(driverId, totalEarnings + other.totalEarnings,
+    //             new HashSet<>(medallions).stream().filter(other.medallions::contains).collect(Collectors.toSet()));
+    // }
 
     @Override
     public String toString() {

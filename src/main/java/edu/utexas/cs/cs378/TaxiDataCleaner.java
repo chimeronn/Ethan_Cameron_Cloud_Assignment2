@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.io.PrintWriter;
 
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 
@@ -78,7 +79,7 @@ public final class TaxiDataCleaner {
                 if(scratch == null) {
                     continue;
                 }
-                
+
                 String medallion = scratch[0];
                 String driverId = scratch[1];
                 String totalAmount = scratch[16];
