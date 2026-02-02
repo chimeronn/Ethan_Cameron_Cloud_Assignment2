@@ -43,6 +43,7 @@ public final class TaxiDataCleaner {
                 BufferedReader reader = new BufferedReader(
                         new InputStreamReader(decompressed, StandardCharsets.UTF_8), 64 * 1024)) {
             cleanLines(reader, socketOut);
+            System.out.println("Flushing data to socket...");
             socketOut.flush();
         }
     }
