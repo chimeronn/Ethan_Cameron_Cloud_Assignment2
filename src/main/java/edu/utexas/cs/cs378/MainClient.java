@@ -13,6 +13,8 @@ public class MainClient {
 		String input = args.length >= 1 ? args[0] : "taxi-data-sorted-small.csv.bz2";
 		Path inputPath = Paths.get(input);
 
+		System.out.println("Sorting dataset " + inputPath.toString() + " and sending to server...");
+
 		String serverAddress = "localhost";
 		int port = 33333;
 
